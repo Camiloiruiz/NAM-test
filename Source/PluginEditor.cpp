@@ -133,8 +133,16 @@ GuitarAmpEditor::GuitarAmpEditor(GuitarAmpProcessor& p)
 
     styleButton(namBrowseBtn_);
     styleButton(irBrowseBtn_);
-    styleButton(namBypassBtn_);
-    styleButton(irBypassBtn_);
+
+    // Bypass buttons: set toggle-aware colours once and let JUCE handle rendering.
+    // toggle-OFF (not bypassed) → grey  |  toggle-ON (bypassed) → amber
+    for (auto* btn : { &namBypassBtn_, &irBypassBtn_ })
+    {
+        btn->setColour(juce::TextButton::buttonColourId,   juce::Colour(0xFF333333));
+        btn->setColour(juce::TextButton::buttonOnColourId, juce::Colour(kAccent));
+        btn->setColour(juce::TextButton::textColourOffId,  juce::Colour(kTextPrimary));
+        btn->setColour(juce::TextButton::textColourOnId,   juce::Colours::black);
+    }
 
     // ── Add children ──────────────────────────────────────────────────────────
     addAndMakeVisible(namFileLabel_);
@@ -150,6 +158,25 @@ GuitarAmpEditor::GuitarAmpEditor(GuitarAmpProcessor& p)
     addAndMakeVisible(trebleKnob_);
     addAndMakeVisible(outputKnob_);
     addAndMakeVisible(statusLabel_);
+
+    // ── Initialise labels from existing processor state (e.g. after reopening) ─
+    {
+        const auto& eng = processor_.getNamEngine();
+        if (eng.getLoadState() == NamEngine::LoadState::Loaded ||
+            eng.getLoadState() == NamEngine::LoadState::Loading)
+        {
+            if (eng.getModelName().isNotEmpty())
+                namFileLabel_.setText(eng.getModelName(), juce::dontSendNotification);
+        }
+
+        if (processor_.isIrLoaded())
+        {
+            const auto irPath = processor_.getIrFilePath();
+            if (irPath.isNotEmpty())
+                irFileLabel_.setText(juce::File(irPath).getFileNameWithoutExtension(),
+                                     juce::dontSendNotification);
+        }
+    }
 
     updateStatusBar();
     startTimerHz(10);  // Poll load state at 10 Hz
@@ -236,7 +263,6 @@ void GuitarAmpEditor::resized()
 void GuitarAmpEditor::timerCallback()
 {
     updateStatusBar();
-    updateBypassButtonAppearance();
 }
 
 void GuitarAmpEditor::updateStatusBar()
@@ -252,9 +278,19 @@ void GuitarAmpEditor::updateStatusBar()
         case NamEngine::LoadState::Error:   namStatus = "Model: ERROR"; break;
     }
 
-    juce::String irStatus = processor_.isIrLoaded()
-        ? "IR: loaded \u2713"
-        : "IR: none";
+    juce::String irStatus;
+    if (processor_.isIrLoaded())
+    {
+        const auto irPath = processor_.getIrFilePath();
+        const auto irName = irPath.isNotEmpty()
+            ? juce::File(irPath).getFileNameWithoutExtension()
+            : juce::String("loaded");
+        irStatus = "IR: " + irName + " \u2713";
+    }
+    else
+    {
+        irStatus = "IR: none";
+    }
 
     statusLabel_.setText(namStatus + "  |  " + irStatus,
                          juce::dontSendNotification);
@@ -263,15 +299,6 @@ void GuitarAmpEditor::updateStatusBar()
     const bool hasError = (eng.getLoadState() == NamEngine::LoadState::Error);
     statusLabel_.setColour(juce::Label::textColourId,
                            hasError ? juce::Colour(kRed) : juce::Colour(kTextDim));
-}
-
-void GuitarAmpEditor::updateBypassButtonAppearance()
-{
-    const bool namBypassed = processor_.getApvts().getRawParameterValue(ParamID::NamBypass)->load() > 0.5f;
-    const bool irBypassed  = processor_.getApvts().getRawParameterValue(ParamID::IrBypass) ->load() > 0.5f;
-
-    styleButton(namBypassBtn_, namBypassed);
-    styleButton(irBypassBtn_,  irBypassed);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

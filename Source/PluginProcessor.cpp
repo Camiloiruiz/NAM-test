@@ -74,6 +74,9 @@ void GuitarAmpProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
     currentSampleRate_ = sampleRate;
     currentBlockSize_  = samplesPerBlock;
 
+    // Force EQ coefficient rebuild on next block (sample rate may have changed).
+    lastBassDb_ = lastMidDb_ = lastTrebleDb_ = 99999.0f;
+
     namEngine_.prepare(sampleRate, samplesPerBlock);
     noiseGate_.prepare(sampleRate);
 
@@ -139,27 +142,36 @@ void GuitarAmpProcessor::updateEqCoefficients(double sampleRate)
 
 void GuitarAmpProcessor::processEq(juce::AudioBuffer<float>& buffer)
 {
-    const int numCh = buffer.getNumChannels();
+    const int numCh      = buffer.getNumChannels();
     const int numSamples = buffer.getNumSamples();
 
     const float bassDb   = apvts_.getRawParameterValue(ParamID::Bass)  ->load();
     const float midDb    = apvts_.getRawParameterValue(ParamID::Mid)   ->load();
     const float trebleDb = apvts_.getRawParameterValue(ParamID::Treble)->load();
 
-    // Update filter coefficients in-place (cheap – just coefficient writes)
-    *bassFilter_[0].coefficients = *IIRCoeffs::makeLowShelf(
-        currentSampleRate_, 250.0, 0.707, juce::Decibels::decibelsToGain(bassDb));
-    *midFilter_[0].coefficients = *IIRCoeffs::makePeakFilter(
-        currentSampleRate_, 800.0, 0.7, juce::Decibels::decibelsToGain(midDb));
-    *trebleFilter_[0].coefficients = *IIRCoeffs::makeHighShelf(
-        currentSampleRate_, 3500.0, 0.707, juce::Decibels::decibelsToGain(trebleDb));
+    // Only rebuild coefficients when a knob has actually moved.
+    // IIRCoeffs::make* allocates and computes sin/cos/tan – expensive every block.
+    if (bassDb != lastBassDb_ || midDb != lastMidDb_ || trebleDb != lastTrebleDb_)
+    {
+        lastBassDb_   = bassDb;
+        lastMidDb_    = midDb;
+        lastTrebleDb_ = trebleDb;
+
+        *bassFilter_[0].coefficients = *IIRCoeffs::makeLowShelf(
+            currentSampleRate_, 250.0, 0.707, juce::Decibels::decibelsToGain(bassDb));
+        *midFilter_[0].coefficients = *IIRCoeffs::makePeakFilter(
+            currentSampleRate_, 800.0, 0.7, juce::Decibels::decibelsToGain(midDb));
+        *trebleFilter_[0].coefficients = *IIRCoeffs::makeHighShelf(
+            currentSampleRate_, 3500.0, 0.707, juce::Decibels::decibelsToGain(trebleDb));
+
+        // Mirror coefficients to channel 1.
+        *bassFilter_[1].coefficients   = *bassFilter_[0].coefficients;
+        *midFilter_[1].coefficients    = *midFilter_[0].coefficients;
+        *trebleFilter_[1].coefficients = *trebleFilter_[0].coefficients;
+    }
 
     for (int ch = 0; ch < std::min(numCh, 2); ++ch)
     {
-        *bassFilter_[ch].coefficients   = *bassFilter_[0].coefficients;
-        *midFilter_[ch].coefficients    = *midFilter_[0].coefficients;
-        *trebleFilter_[ch].coefficients = *trebleFilter_[0].coefficients;
-
         float* data = buffer.getWritePointer(ch);
         juce::dsp::AudioBlock<float> block(&data, 1, static_cast<size_t>(numSamples));
         juce::dsp::ProcessContextReplacing<float> ctx(block);

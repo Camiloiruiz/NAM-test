@@ -110,5 +110,10 @@ private:
     double currentSampleRate_ = 44100.0;
     int    currentBlockSize_  = 512;
 
+    // Cached EQ param values – coefficients are only rebuilt when these change.
+    float lastBassDb_   = 99999.0f;
+    float lastMidDb_    = 99999.0f;
+    float lastTrebleDb_ = 99999.0f;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GuitarAmpProcessor)
 };

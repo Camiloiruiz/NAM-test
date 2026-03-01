@@ -81,7 +81,6 @@ private:
     // ── Timer → poll load state ──────────────────────────────────────────────
     void timerCallback() override;
     void updateStatusBar();
-    void updateBypassButtonAppearance();
 
     void styleKnob(juce::Slider&);
     void styleButton(juce::TextButton&, bool isActive = false);
