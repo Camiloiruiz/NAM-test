@@ -1,4 +1,5 @@
 #include "NamEngine.h"
+#include "NamForceLink.h"
 
 // NAM Core headers
 #include "NAM/dsp.h"
@@ -7,7 +8,10 @@
 #include <filesystem>
 
 // ─────────────────────────────────────────────────────────────────────────────
-NamEngine::NamEngine() = default;
+NamEngine::NamEngine()
+{
+    RegisterNamArchitectures();
+}
 
 NamEngine::~NamEngine()
 {
