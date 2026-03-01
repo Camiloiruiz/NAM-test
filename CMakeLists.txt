@@ -55,6 +55,7 @@ target_sources(GuitarAmpPlugin
         Source/PluginEditor.h
         Source/NamEngine.cpp
         Source/NamEngine.h
+        Source/NamForceLink.cpp
         Source/NoiseGate.cpp
         Source/NoiseGate.h
         ${NAM_SOURCES}
