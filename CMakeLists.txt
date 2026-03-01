@@ -35,12 +35,15 @@ juce_generate_juce_header(GuitarAmpPlugin)
 set(NAM_CORE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Modules/NeuralAmpModelerCore")
 
 set(NAM_SOURCES
+    "${NAM_CORE_DIR}/NAM/activations.cpp"
+    "${NAM_CORE_DIR}/NAM/conv1d.cpp"
+    "${NAM_CORE_DIR}/NAM/convnet.cpp"
     "${NAM_CORE_DIR}/NAM/dsp.cpp"
     "${NAM_CORE_DIR}/NAM/get_dsp.cpp"
     "${NAM_CORE_DIR}/NAM/lstm.cpp"
+    "${NAM_CORE_DIR}/NAM/ring_buffer.cpp"
+    "${NAM_CORE_DIR}/NAM/util.cpp"
     "${NAM_CORE_DIR}/NAM/wavenet.cpp"
-    "${NAM_CORE_DIR}/NAM/convnet.cpp"
-    "${NAM_CORE_DIR}/NAM/activations.cpp"
 )
 
 # ─── Plugin sources ───────────────────────────────────────────────────────────
