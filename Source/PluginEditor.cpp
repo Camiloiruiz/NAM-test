@@ -268,8 +268,8 @@ void GuitarAmpEditor::updateStatusBar()
 
 void GuitarAmpEditor::updateBypassButtonAppearance()
 {
-    const bool namBypassed = apvts().getRawParameterValue(ParamID::NamBypass)->load() > 0.5f;
-    const bool irBypassed  = apvts().getRawParameterValue(ParamID::IrBypass) ->load() > 0.5f;
+    const bool namBypassed = processor_.getApvts().getRawParameterValue(ParamID::NamBypass)->load() > 0.5f;
+    const bool irBypassed  = processor_.getApvts().getRawParameterValue(ParamID::IrBypass) ->load() > 0.5f;
 
     styleButton(namBypassBtn_, namBypassed);
     styleButton(irBypassBtn_,  irBypassed);

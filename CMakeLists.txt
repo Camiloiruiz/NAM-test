@@ -111,3 +111,11 @@ if(APPLE)
         XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES
     )
 endif()
+
+if(MSVC)
+    # NAMCore uses GCC's __restrict__ keyword; map it to MSVC's __restrict.
+    target_compile_definitions(GuitarAmpPlugin PRIVATE __restrict__=__restrict)
+    # Ensure source files are compiled as UTF-8 so Unicode string literals
+    # (e.g. \u2713 checkmark in PluginEditor.cpp) are handled correctly.
+    target_compile_options(GuitarAmpPlugin PRIVATE /utf-8)
+endif()

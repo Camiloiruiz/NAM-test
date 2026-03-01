@@ -4,6 +4,10 @@
 #include "NAM/dsp.h"
 #include "NAM/get_dsp.h"
 
+#include <filesystem>
+
+#include <filesystem>
+
 // ─────────────────────────────────────────────────────────────────────────────
 NamEngine::NamEngine() = default;
 
@@ -40,6 +44,8 @@ void NamEngine::prepare(double sampleRate, int maxBlockSize)
 
         resampledInput_ .resize(static_cast<size_t>(namMaxBlock), 0.0f);
         resampledOutput_.resize(static_cast<size_t>(namMaxBlock), 0.0f);
+        dblInput_ .resize(static_cast<size_t>(namMaxBlock), 0.0);
+        dblOutput_.resize(static_cast<size_t>(namMaxBlock), 0.0);
 
         upsampler_  .reset();
         downsampler_.reset();
@@ -52,6 +58,8 @@ void NamEngine::prepare(double sampleRate, int maxBlockSize)
     {
         resampledInput_ .clear();
         resampledOutput_.clear();
+        dblInput_ .resize(static_cast<size_t>(maxBlockSize), 0.0);
+        dblOutput_.resize(static_cast<size_t>(maxBlockSize), 0.0);
         latencySamples_ = 0;
     }
 
@@ -87,8 +95,15 @@ void NamEngine::process(const float* input, float* output, int numSamples, bool 
 
     if (!needsResampling_)
     {
-        // Direct processing – no allocation, no extra latency.
-        mdl->process(input, output, numSamples);
+        // Direct processing – convert float→double, call NAM, convert back.
+        // nam::DSP::process takes double** (array of channel pointers).
+        for (int i = 0; i < numSamples; ++i)
+            dblInput_[static_cast<size_t>(i)] = static_cast<double>(input[i]);
+        double* inPtr  = dblInput_.data();
+        double* outPtr = dblOutput_.data();
+        mdl->process(&inPtr, &outPtr, numSamples);
+        for (int i = 0; i < numSamples; ++i)
+            output[i] = static_cast<float>(dblOutput_[static_cast<size_t>(i)]);
     }
     else
     {
@@ -99,8 +114,14 @@ void NamEngine::process(const float* input, float* output, int numSamples, bool 
                                resampledInput_.data(),
                                numSamples));
 
-        // ── Run NAM at 48 kHz ────────────────────────────────────────────────
-        mdl->process(resampledInput_.data(), resampledOutput_.data(), namSamples);
+        // ── Run NAM at 48 kHz (float→double→float) ───────────────────────────
+        for (int i = 0; i < namSamples; ++i)
+            dblInput_[static_cast<size_t>(i)] = static_cast<double>(resampledInput_[static_cast<size_t>(i)]);
+        double* inPtr  = dblInput_.data();
+        double* outPtr = dblOutput_.data();
+        mdl->process(&inPtr, &outPtr, namSamples);
+        for (int i = 0; i < namSamples; ++i)
+            resampledOutput_[static_cast<size_t>(i)] = static_cast<float>(dblOutput_[static_cast<size_t>(i)]);
 
         // ── Downsample 48 kHz → host ─────────────────────────────────────────
         downsampler_.process(downsampleRatio_,
@@ -150,7 +171,8 @@ void NamEngine::doLoad(const std::string& path,
 
     try
     {
-        newModel = nam::get_dsp(path);
+        // Disambiguate: get_dsp has overloads for json and filesystem::path.
+        newModel = nam::get_dsp(std::filesystem::path(path));
 
         if (!newModel)
             throw std::runtime_error("nam::get_dsp returned null");

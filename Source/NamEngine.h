@@ -126,6 +126,11 @@ private:
     std::vector<float> resampledInput_;
     std::vector<float> resampledOutput_;
 
+    // nam::DSP::process takes double**, so we keep pre-allocated double buffers
+    // to avoid heap allocation on the audio thread.
+    std::vector<double> dblInput_;
+    std::vector<double> dblOutput_;
+
     // Mutex protecting stagingModel_ during construction (background thread only)
     std::mutex loadMutex_;
 
