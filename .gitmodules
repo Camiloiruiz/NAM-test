@@ -1,9 +1,9 @@
 [submodule "Modules/JUCE"]
 	path = Modules/JUCE
-	url = https://github.com/juce-framework/JUCE.git
+	url = https://github.com/juce-framework/JUCE
 	branch = master
 
 [submodule "Modules/NeuralAmpModelerCore"]
 	path = Modules/NeuralAmpModelerCore
-	url = https://github.com/sdatkinson/NeuralAmpModelerCore.git
+	url = https://github.com/sdatkinson/NeuralAmpModelerCore
 	branch = main
