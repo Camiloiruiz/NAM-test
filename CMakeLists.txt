@@ -11,7 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #   git submodule update --init --recursive
 
 add_subdirectory(Modules/JUCE)
-add_subdirectory(Modules/NeuralAmpModelerCore EXCLUDE_FROM_ALL)
+# NeuralAmpModelerCore has no usable CMake library target; sources are added manually below.
 
 # ─── JUCE plugin target ───────────────────────────────────────────────────────
 juce_add_plugin(GuitarAmpPlugin
@@ -28,9 +28,10 @@ juce_add_plugin(GuitarAmpPlugin
     COPY_PLUGIN_AFTER_BUILD FALSE
 )
 
+# Generate JuceHeader.h (required by all Source files via #include <JuceHeader.h>)
+juce_generate_juce_header(GuitarAmpPlugin)
+
 # ─── NAM Core source files ────────────────────────────────────────────────────
-# NeuralAmpModelerCore exposes a CMake target "NeuralAmpModelerCore" (or similar).
-# If it doesn't, list sources manually:
 set(NAM_CORE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Modules/NeuralAmpModelerCore")
 
 set(NAM_SOURCES
@@ -77,8 +78,8 @@ target_include_directories(GuitarAmpPlugin
         Source
         "${NAM_CORE_DIR}"
         "${NAM_CORE_DIR}/NAM"
-        "${NAM_CORE_DIR}/Dependencies/Eigen"        # Eigen bundled with NAMCore
-        "${NAM_CORE_DIR}/Dependencies/nlohmann_json" # nlohmann/json bundled with NAMCore
+        "${NAM_CORE_DIR}/Dependencies/eigen"    # Eigen bundled with NAMCore
+        "${NAM_CORE_DIR}/Dependencies/nlohmann" # nlohmann/json bundled with NAMCore
 )
 
 # ─── JUCE module links ────────────────────────────────────────────────────────
