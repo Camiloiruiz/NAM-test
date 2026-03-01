@@ -77,11 +77,10 @@ GuitarAmpEditor::GuitarAmpEditor(GuitarAmpProcessor& p)
                         result.getFullPathName(),
                         [this](NamEngine::LoadState state, juce::String msg)
                         {
-                            juce::ignoreUnused(msg);
                             const bool ok = (state == NamEngine::LoadState::Loaded);
                             namFileLabel_.setText(
                                 ok ? processor_.getNamEngine().getModelName()
-                                   : "Load error!",
+                                   : "Error: " + msg,
                                 juce::dontSendNotification);
                             updateStatusBar();
                         });
@@ -172,17 +171,17 @@ void GuitarAmpEditor::paint(juce::Graphics& g)
 
     // Top panel background
     g.setColour(juce::Colour(kPanel));
-    g.fillRect(0, 0, w, 90);
+    g.fillRect(0, 0, w, 110);
 
     // Divider line
     g.setColour(juce::Colour(kAccent));
-    g.fillRect(0, 89, w, 2);
+    g.fillRect(0, 109, w, 2);
 
-    // Plugin title (top-right)
+    // Plugin title – drawn in its own strip at the very top, clear of the buttons
     g.setColour(juce::Colour(kAccent));
-    g.setFont(juce::Font(16.0f, juce::Font::bold));
-    g.drawText("GUITAR AMP", getLocalBounds().removeFromTop(44).reduced(8, 0),
-               juce::Justification::topRight);
+    g.setFont(juce::Font(14.0f, juce::Font::bold));
+    g.drawText("GUITAR AMP", getLocalBounds().removeFromTop(20).reduced(8, 0),
+               juce::Justification::centredRight);
 
     // Status bar background
     g.setColour(juce::Colour(0xFF181818));
@@ -200,24 +199,24 @@ void GuitarAmpEditor::resized()
     const int rowH     = 34;
     const int statusH  = 28;
 
-    // ── Top panel: NAM row (y=8) ──────────────────────────────────────────────
+    // ── Top panel: NAM row (y=24, below title strip) ─────────────────────────
     {
-        int y = 8;
-        namBypassBtn_.setBounds(w - margin - btnW,   y, btnW, rowH);
+        int y = 24;
+        namBypassBtn_.setBounds(w - margin - btnW,       y, btnW, rowH);
         namBrowseBtn_.setBounds(w - margin - btnW*2 - 4, y, btnW, rowH);
         namFileLabel_.setBounds(margin, y, w - margin*2 - btnW*2 - 12, rowH);
     }
 
-    // ── Top panel: IR row (y=48) ──────────────────────────────────────────────
+    // ── Top panel: IR row (y=64) ──────────────────────────────────────────────
     {
-        int y = 48;
-        irBypassBtn_.setBounds(w - margin - btnW,   y, btnW, rowH);
+        int y = 64;
+        irBypassBtn_.setBounds(w - margin - btnW,       y, btnW, rowH);
         irBrowseBtn_.setBounds(w - margin - btnW*2 - 4, y, btnW, rowH);
         irFileLabel_.setBounds(margin, y, w - margin*2 - btnW*2 - 12, rowH);
     }
 
     // ── Knob row (below divider) ──────────────────────────────────────────────
-    const int knobAreaTop  = 96;
+    const int knobAreaTop  = 116;
     const int knobAreaH    = h - knobAreaTop - statusH - margin;
     const int knobW        = (w - margin * 2) / 6;
 
