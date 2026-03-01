@@ -76,10 +76,13 @@ target_compile_definitions(GuitarAmpPlugin
 target_include_directories(GuitarAmpPlugin
     PRIVATE
         Source
+        # JuceHeader.h is generated here; juce_generate_juce_header adds it via
+        # INTERFACE which doesn't cover the target's own sources, so add it explicitly.
+        "${CMAKE_CURRENT_BINARY_DIR}/GuitarAmpPlugin_artefacts/JuceLibraryCode"
         "${NAM_CORE_DIR}"
         "${NAM_CORE_DIR}/NAM"
         "${NAM_CORE_DIR}/Dependencies/eigen"    # Eigen bundled with NAMCore
-        "${NAM_CORE_DIR}/Dependencies/nlohmann" # nlohmann/json bundled with NAMCore
+        "${NAM_CORE_DIR}/Dependencies/nlohmann" # nlohmann/json.hpp bundled with NAMCore
 )
 
 # ─── JUCE module links ────────────────────────────────────────────────────────
