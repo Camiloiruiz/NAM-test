@@ -123,4 +123,29 @@ if(MSVC)
     # Ensure source files are compiled as UTF-8 so Unicode string literals
     # (e.g. \u2713 checkmark in PluginEditor.cpp) are handled correctly.
     target_compile_options(GuitarAmpPlugin PRIVATE /utf-8)
+
+    # ── WASAPI Exclusive Mode ───────────────────────────────────────────────
+    # Enables lower-latency buffer sizes in the Standalone app when using
+    # the built-in Windows Audio device type.
+    target_compile_definitions(GuitarAmpPlugin PUBLIC JUCE_WASAPI_EXCLUSIVE=1)
+
+    # ── ASIO support (optional – requires Steinberg ASIO SDK) ──────────────
+    # Download the SDK (free) from:
+    #   https://www.steinberg.net/developers/  →  "ASIO SDK"
+    # Place (or symlink) the extracted folder at:
+    #   <repo>/Modules/ASIO_SDK/
+    # Then re-configure with:
+    #   cmake -B build -S . -G "Visual Studio 17 2022" -A x64 -DJUCE_ASIO=ON
+    option(JUCE_ASIO "Enable ASIO support (requires Steinberg ASIO SDK at Modules/ASIO_SDK)" OFF)
+    if(JUCE_ASIO)
+        set(ASIO_SDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Modules/ASIO_SDK"
+            CACHE PATH "Path to Steinberg ASIO SDK root")
+        if(EXISTS "${ASIO_SDK_DIR}/common/asio.h")
+            target_compile_definitions(GuitarAmpPlugin PUBLIC JUCE_ASIO=1)
+            target_include_directories(GuitarAmpPlugin PRIVATE "${ASIO_SDK_DIR}/common")
+            message(STATUS "ASIO: SDK found at ${ASIO_SDK_DIR} – ASIO enabled")
+        else()
+            message(WARNING "ASIO: SDK not found at ${ASIO_SDK_DIR}/common/asio.h – ASIO disabled")
+        endif()
+    endif()
 endif()

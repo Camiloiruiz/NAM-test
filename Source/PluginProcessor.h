@@ -71,6 +71,8 @@ public:
 
     juce::String getNamFilePath() const { return namFilePath_; }
     juce::String getIrFilePath()  const { return irFilePath_;  }
+    /** Filename without extension of the loaded IR (empty when none loaded). */
+    juce::String getIrFileName()  const { return irFileName_;  }
 
     /** True if an IR file has been loaded into the convolution engine. */
     bool isIrLoaded() const noexcept { return irLoaded_; }
@@ -102,6 +104,7 @@ private:
     // ── State / paths ────────────────────────────────────────────────────────
     juce::String namFilePath_;
     juce::String irFilePath_;
+    juce::String irFileName_;  // basename without extension, set alongside irFilePath_
 
     // ── Helpers ──────────────────────────────────────────────────────────────
     void updateEqCoefficients(double sampleRate);

@@ -73,7 +73,8 @@ private:
 
     std::unique_ptr<SliderAttachment> inputAtt_, gateAtt_, bassAtt_,
                                        midAtt_, trebleAtt_, outputAtt_;
-    std::unique_ptr<ButtonAttachment> namBypassAtt_, irBypassAtt_;
+    // NOTE: bypass buttons are managed manually (onClick + timer sync)
+    //       so that visual feedback is immediate and reliable on Windows.
 
     // ── File chooser ─────────────────────────────────────────────────────────
     std::unique_ptr<juce::FileChooser> fileChooser_;
@@ -81,6 +82,8 @@ private:
     // ── Timer → poll load state ──────────────────────────────────────────────
     void timerCallback() override;
     void updateStatusBar();
+    void refreshBypassVisual(juce::TextButton& btn, bool bypassed);
+    void syncBypassButtons();   // called from timer to handle DAW automation
 
     void styleKnob(juce::Slider&);
     void styleButton(juce::TextButton&, bool isActive = false);

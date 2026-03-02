@@ -267,6 +267,7 @@ void GuitarAmpProcessor::loadNamModel(
 void GuitarAmpProcessor::loadIrFile(const juce::String& path)
 {
     irFilePath_ = path;
+    irFileName_ = juce::File(path).getFileNameWithoutExtension();
     irLoaded_   = true;
 
     convolution_.loadImpulseResponse(
@@ -280,6 +281,7 @@ void GuitarAmpProcessor::loadIrFile(const juce::String& path)
 void GuitarAmpProcessor::clearIrFile()
 {
     irFilePath_.clear();
+    irFileName_.clear();
     irLoaded_ = false;
     convolution_.reset();
 }

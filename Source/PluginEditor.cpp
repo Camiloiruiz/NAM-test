@@ -46,9 +46,29 @@ GuitarAmpEditor::GuitarAmpEditor(GuitarAmpProcessor& p)
     trebleAtt_ = std::make_unique<SliderAttachment>(apvts, ParamID::Treble,      trebleKnob_.getSlider());
     outputAtt_ = std::make_unique<SliderAttachment>(apvts, ParamID::OutputLevel, outputKnob_.getSlider());
 
-    // ── Button attachments ───────────────────────────────────────────────────
-    namBypassAtt_ = std::make_unique<ButtonAttachment>(apvts, ParamID::NamBypass, namBypassBtn_);
-    irBypassAtt_  = std::make_unique<ButtonAttachment>(apvts, ParamID::IrBypass,  irBypassBtn_);
+    // ── Bypass buttons – fully manual (no ButtonAttachment).
+    //    onClick toggles the APVTS parameter and refreshes the visual immediately.
+    //    timerCallback() syncs the visual if the parameter is changed externally
+    //    (DAW automation).
+    {
+        auto setupBypass = [&](juce::TextButton& btn, const char* paramId)
+        {
+            const bool curVal =
+                apvts.getRawParameterValue(paramId)->load() > 0.5f;
+            refreshBypassVisual(btn, curVal);
+
+            btn.onClick = [this, &btn, paramId]()
+            {
+                auto* param = processor_.getApvts().getParameter(paramId);
+                const bool newVal = !(param->getValue() > 0.5f);
+                param->setValueNotifyingHost(newVal ? 1.0f : 0.0f);
+                refreshBypassVisual(btn, newVal);
+            };
+        };
+
+        setupBypass(namBypassBtn_, ParamID::NamBypass);
+        setupBypass(irBypassBtn_,  ParamID::IrBypass);
+    }
 
     // ── NAM row setup ─────────────────────────────────────────────────────────
     namFileLabel_.setText("No model loaded", juce::dontSendNotification);
@@ -133,16 +153,7 @@ GuitarAmpEditor::GuitarAmpEditor(GuitarAmpProcessor& p)
 
     styleButton(namBrowseBtn_);
     styleButton(irBrowseBtn_);
-
-    // Bypass buttons: set toggle-aware colours once and let JUCE handle rendering.
-    // toggle-OFF (not bypassed) → grey  |  toggle-ON (bypassed) → amber
-    for (auto* btn : { &namBypassBtn_, &irBypassBtn_ })
-    {
-        btn->setColour(juce::TextButton::buttonColourId,   juce::Colour(0xFF333333));
-        btn->setColour(juce::TextButton::buttonOnColourId, juce::Colour(kAccent));
-        btn->setColour(juce::TextButton::textColourOffId,  juce::Colour(kTextPrimary));
-        btn->setColour(juce::TextButton::textColourOnId,   juce::Colours::black);
-    }
+    // Bypass buttons are already coloured by setupBypass() above.
 
     // ── Add children ──────────────────────────────────────────────────────────
     addAndMakeVisible(namFileLabel_);
@@ -171,10 +182,9 @@ GuitarAmpEditor::GuitarAmpEditor(GuitarAmpProcessor& p)
 
         if (processor_.isIrLoaded())
         {
-            const auto irPath = processor_.getIrFilePath();
-            if (irPath.isNotEmpty())
-                irFileLabel_.setText(juce::File(irPath).getFileNameWithoutExtension(),
-                                     juce::dontSendNotification);
+            const auto irName = processor_.getIrFileName();
+            if (irName.isNotEmpty())
+                irFileLabel_.setText(irName, juce::dontSendNotification);
         }
     }
 
@@ -263,10 +273,46 @@ void GuitarAmpEditor::resized()
 void GuitarAmpEditor::timerCallback()
 {
     updateStatusBar();
+    syncBypassButtons();
+}
+
+void GuitarAmpEditor::refreshBypassVisual(juce::TextButton& btn, bool bypassed)
+{
+    // Set both on- and off-colour IDs to the same value so the result is
+    // independent of the button's internal toggle state.
+    const auto bg   = bypassed ? juce::Colour(kAccent)       : juce::Colour(0xFF3A3A3A);
+    const auto text = bypassed ? juce::Colours::black         : juce::Colour(kTextDim);
+
+    btn.setColour(juce::TextButton::buttonColourId,   bg);
+    btn.setColour(juce::TextButton::buttonOnColourId, bg);
+    btn.setColour(juce::TextButton::textColourOffId,  text);
+    btn.setColour(juce::TextButton::textColourOnId,   text);
+    btn.repaint();
+}
+
+void GuitarAmpEditor::syncBypassButtons()
+{
+    // Keeps visuals in sync when the parameter is changed externally (DAW automation).
+    auto& apvts = processor_.getApvts();
+    const bool namBypassed = apvts.getRawParameterValue(ParamID::NamBypass)->load() > 0.5f;
+    const bool irBypassed  = apvts.getRawParameterValue(ParamID::IrBypass) ->load() > 0.5f;
+
+    // Only repaint if state has changed (avoid redundant work every 100 ms).
+    const bool namBtn = namBypassBtn_.findColour(juce::TextButton::buttonColourId)
+                            == juce::Colour(kAccent);
+    const bool irBtn  = irBypassBtn_.findColour(juce::TextButton::buttonColourId)
+                            == juce::Colour(kAccent);
+
+    if (namBtn != namBypassed) refreshBypassVisual(namBypassBtn_, namBypassed);
+    if (irBtn  != irBypassed)  refreshBypassVisual(irBypassBtn_,  irBypassed);
 }
 
 void GuitarAmpEditor::updateStatusBar()
 {
+    // Build the checkmark via charToString so its Unicode encoding is
+    // guaranteed regardless of platform string literal handling.
+    static const juce::String kCheck = " " + juce::String::charToString(0x2713);
+
     const auto& eng = processor_.getNamEngine();
     juce::String namStatus;
 
@@ -274,18 +320,17 @@ void GuitarAmpEditor::updateStatusBar()
     {
         case NamEngine::LoadState::Idle:    namStatus = "No model"; break;
         case NamEngine::LoadState::Loading: namStatus = "Loading model..."; break;
-        case NamEngine::LoadState::Loaded:  namStatus = "Model: " + eng.getModelName() + " \u2713"; break;
+        case NamEngine::LoadState::Loaded:  namStatus = "Model: " + eng.getModelName() + kCheck; break;
         case NamEngine::LoadState::Error:   namStatus = "Model: ERROR"; break;
     }
 
     juce::String irStatus;
     if (processor_.isIrLoaded())
     {
-        const auto irPath = processor_.getIrFilePath();
-        const auto irName = irPath.isNotEmpty()
-            ? juce::File(irPath).getFileNameWithoutExtension()
-            : juce::String("loaded");
-        irStatus = "IR: " + irName + " \u2713";
+        // Use the filename stored directly by the processor to avoid any
+        // re-parse / encoding ambiguity when building the status string.
+        const auto irName = processor_.getIrFileName();
+        irStatus = "IR: " + (irName.isNotEmpty() ? irName : juce::String("loaded")) + kCheck;
     }
     else
     {
@@ -295,7 +340,6 @@ void GuitarAmpEditor::updateStatusBar()
     statusLabel_.setText(namStatus + "  |  " + irStatus,
                          juce::dontSendNotification);
 
-    // Colour the status text based on state
     const bool hasError = (eng.getLoadState() == NamEngine::LoadState::Error);
     statusLabel_.setColour(juce::Label::textColourId,
                            hasError ? juce::Colour(kRed) : juce::Colour(kTextDim));
